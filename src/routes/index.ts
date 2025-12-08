@@ -1,0 +1,53 @@
+import { Router } from "express";
+
+import authRoute from "./auth";
+import settingRoute from "./settings";
+import userRoute from "./user";
+import bannerRoute from "./banners";
+import homerRoute from "./home_page";
+import fnotesRoute from "./field_notes";
+import pageRoute from "./pages";
+import destinationRoute from "./destinations";
+import pgDataRoute from "./page_data";
+import advGuideRoute from "./adventure_guide";
+import toursRoute from "./tours";
+import customCategoryRoute from "./custom-categories";
+import contatFormEntriesRoute from "./contact_form_entries";
+import reviewsRoute from "./reviews";
+import likesRoute from "./likes";
+import savedRoute from "./saved";
+import commentsRoute from "./comments";
+import shareRoute from "./share";
+import royaltyRoute from "./royalty";
+import followRoute from "./follow";
+import imageCompress from "./image_compress";
+import generalSettings from "./general_settings";
+import resortsRoute from "./resorts";
+
+const router = Router();
+
+router.use("/auth", authRoute);
+router.use("/settings", settingRoute);
+router.use("/users", userRoute);
+router.use("/banners", bannerRoute);
+router.use("/home", homerRoute);
+router.use("/field_note", fnotesRoute);
+router.use("/page", pageRoute);
+router.use("/destination", destinationRoute);
+router.use("/pg_data", pgDataRoute);
+router.use("/adventure_guide", advGuideRoute);
+router.use("/tours", toursRoute);
+router.use("/contact_form", contatFormEntriesRoute);
+router.use("/reviews", reviewsRoute);
+router.use("/likes", likesRoute);
+router.use("/saved", savedRoute);
+router.use("/comments", commentsRoute);
+router.use("/share", shareRoute);
+router.use("/royalty", royaltyRoute);
+router.use("/follow", followRoute);
+router.use("/image_compress", imageCompress);
+router.use("/general-settings", generalSettings);
+router.use("/resorts", resortsRoute);
+router.use("/custom-categories", customCategoryRoute);
+
+export default router;

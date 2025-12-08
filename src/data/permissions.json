@@ -1,0 +1,39 @@
+[
+  {
+    "key": "users",
+    "name": "Users",
+    "routes": ["createUser", "getUsers", "updateUser", "deleteUser"]
+  },
+  {
+    "key": "clients",
+    "name": "Clients",
+    "routes": [
+      "createClient",
+      "getClients",
+      "updateClient",
+      "deleteClient"
+    ]
+  },
+  {
+    "key": "settings",
+    "name": "Settings",
+    "routes": [
+      "createSetting",
+      "reloadSettings",
+      "getSettings",
+      "updateSetting",
+      "deleteSetting"
+    ]
+  },
+  {
+    "key": "company",
+    "name": "Company",
+    "routes": [
+      "createCompany",
+      "getCompanies",
+      "updateCompany",
+      "deleteCompany"
+    ]
+  }
+
+]

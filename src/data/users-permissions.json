@@ -1,0 +1,76 @@
+[
+  {
+    "name": "super_admin",
+    "permissions": [
+      "createCompany",
+      "getCompanies",
+      "updateCompany",
+      "deleteCompany",
+      "createSetting",
+      "reloadSettings",
+      "getSettings",
+      "updateSetting",
+      "deleteSetting"
+    ]
+  },
+  {
+    "name": "company_admin",
+    "permissions": [
+      "getCompanies",
+      "updateCompany",
+      "createUser",
+      "getUsers",
+      "updateUser",
+      "deleteUser",
+      "createClient",
+      "getClients",
+      "updateClient",
+      "deleteClient",
+      "getSettings",
+      "updateSetting"
+    ]
+  },
+  {
+    "name": "branch_manager",
+    "permissions": [
+      "createUser",
+      "getUsers",
+      "updateUser",
+      "deleteUser"
+    ]
+  },
+  {
+    "name": "exchange_manager",
+    "permissions": [
+      "getUsers",
+      "getClients",
+      "updateClient",
+      "deleteClient"
+    ]
+  },
+  {
+    "name": "sales_manager",
+    "permissions": [
+      "getUsers",
+      "createClient",
+      "getClients",
+      "updateClient",
+      "deleteClient"
+    ]
+  },
+  {
+    "name": "exchange_officer",
+    "permissions": [
+      "getClients",
+      "updateClient"
+    ]
+  },
+  {
+    "name": "sales_officer",
+    "permissions": [
+      "createClient",
+      "getClients",
+      "updateClient"
+    ]
+  }
+]
