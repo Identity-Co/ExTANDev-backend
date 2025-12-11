@@ -179,6 +179,8 @@ export async function createResort(
       country: req.body.country,
       short_description: req.body.short_description,
       tags: tagsData,
+      booking_url: req.body?.booking_url || '',
+      booking_url_date_format: req.body?.booking_url_date_format || '',
       posted_user: req.body.posted_user,
       image: req.body?.image,
       overview: {
@@ -333,6 +335,8 @@ export async function updateResort(
         country: req.body.country,
         short_description: req.body.short_description,
         tags: tagsData,
+        booking_url: req.body?.booking_url || '',
+        booking_url_date_format: req.body?.booking_url_date_format || '',
         image: req.body?.image,
         overview: {
           banners: req.body.overview_banners || [],

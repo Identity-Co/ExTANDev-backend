@@ -150,30 +150,37 @@ export async function homePage(
 }
 
 export async function adv_guide(
-  req: Request, 
-  res: Response, 
+  req: Request,
+  res: Response,
   next: NextFunction
 ) {
   try {
     const userId = req.body?.userId;
+    const feedUrl = req.body?.feedUrl || '';
+    const filteredCat = req.body?.filteredCat || '';
+    const page = Number(req.body.page) || 1;
+    const limit = Number(req.body.limit) || 10;
+
     let query: any = {};
+    let rssPosts: any = [];
 
     if (userId) {
       const user = await User.findById(userId);
-      
       if (user) {
-        if (user.role === 'admin') {
-          // Empty query = all posts
-        } else {
+        if (user.role !== "admin") {
           query = {
             $or: [
               { posted_user: user._id.toString() },
               { post_visiblility: { $ne: "friends" } },
-              ...(user.referance_id ? [{
-                post_visiblility: "friends",
-                posted_user: user.referance_id
-              }] : [])
-            ]
+              ...(user.referance_id
+                ? [
+                    {
+                      post_visiblility: "friends",
+                      posted_user: user.referance_id,
+                    },
+                  ]
+                : []),
+            ],
           };
         }
       } else {
@@ -183,8 +190,202 @@ export async function adv_guide(
       query.post_visiblility = { $ne: "friends" };
     }
 
-    const aguide = await AGuide.find(query);
-    return res.status(config.statusCode.SUCCESS).json({ success: true, data: aguide });
+    const dbPosts = await AGuide.find(query).lean();
+
+    if(feedUrl){
+      const rssRes = await fetch(feedUrl);
+      const xmlText = await rssRes.text();
+      
+      // More robust regex to find all items
+      // This handles different spacing and attributes in <item> tags
+      const itemRegex = /<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi;
+      const items: string[] = [];
+      let match;
+      
+      while ((match = itemRegex.exec(xmlText)) !== null) {
+        items.push(match[1]);
+      }
+      
+      rssPosts = items.map((itemXml: string) => {
+        // Function to extract tag content, handling CDATA and attributes
+        const getTag = (tagName: string) => {
+          // Pattern to match the tag with any attributes and get content
+          const pattern = new RegExp(`<${tagName}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tagName}>`, 'i');
+          const match = itemXml.match(pattern);
+          
+          if (!match) return '';
+          
+          let content = match[1];
+          
+          // Handle CDATA sections
+          if (content.includes('<![CDATA[')) {
+            const cdataMatch = content.match(/<!\[CDATA\[(.*?)\]\]>/s);
+            if (cdataMatch) {
+              content = cdataMatch[1];
+            }
+          }
+          
+          // Remove any nested tags but keep text
+          content = content.replace(/<[^>]*>/g, '');
+          
+          return content.trim();
+        };
+        
+        // Function to extract link (special handling for link tag)
+        const getLink = () => {
+          // Try to get link from <link> tag
+          const linkPattern = /<link(?:\s[^>]*)?>([\s\S]*?)<\/link>/i;
+          const linkMatch = itemXml.match(linkPattern);
+          
+          if (linkMatch) {
+            let link = linkMatch[1];
+            // Handle CDATA
+            if (link.includes('<![CDATA[')) {
+              const cdataMatch = link.match(/<!\[CDATA\[(.*?)\]\]>/s);
+              if (cdataMatch) link = cdataMatch[1];
+            }
+            link = link.replace(/<[^>]*>/g, '').trim();
+            if (link) return link;
+          }
+          
+          // Try to get link from guid
+          const guidPattern = /<guid(?:\s[^>]*)?>([\s\S]*?)<\/guid>/i;
+          const guidMatch = itemXml.match(guidPattern);
+          if (guidMatch) {
+            let guid = guidMatch[1];
+            if (guid.includes('<![CDATA[')) {
+              const cdataMatch = guid.match(/<!\[CDATA\[(.*?)\]\]>/s);
+              if (cdataMatch) guid = cdataMatch[1];
+            }
+            guid = guid.replace(/<[^>]*>/g, '').trim();
+            // Only use guid if it looks like a URL
+            if (guid.startsWith('http')) return guid;
+          }
+          
+          return '';
+        };
+        
+        // Extract title
+        const title = getTag('title');
+        
+        // Extract link
+        const link = getLink();
+        
+        // Extract description (try description first, then content:encoded)
+        let description = getTag('description');
+        if (!description) {
+          // Try content:encoded
+          const contentEncodedPattern = /<content:encoded(?:\s[^>]*)?>([\s\S]*?)<\/content:encoded>/i;
+          const contentMatch = itemXml.match(contentEncodedPattern);
+          if (contentMatch) {
+            description = contentMatch[1];
+            if (description.includes('<![CDATA[')) {
+              const cdataMatch = description.match(/<!\[CDATA\[(.*?)\]\]>/s);
+              if (cdataMatch) description = cdataMatch[1];
+            }
+          }
+        }
+        
+        // Extract date (try multiple possible date fields)
+        let date = '';
+        const dateFields = ['pubDate', 'pubdate', 'published', 'updated', 'dc:date'];
+        for (const field of dateFields) {
+          const datePattern = new RegExp(`<${field}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${field}>`, 'i');
+          const dateMatch = itemXml.match(datePattern);
+          if (dateMatch) {
+            date = dateMatch[1];
+            if (date.includes('<![CDATA[')) {
+              const cdataMatch = date.match(/<!\[CDATA\[(.*?)\]\]>/s);
+              if (cdataMatch) date = cdataMatch[1];
+            }
+            date = date.replace(/<[^>]*>/g, '').trim();
+            if (date) break;
+          }
+        }
+        
+        // Extract categories
+        const categories: string[] = [];
+        const categoryRegex = /<category(?:\s[^>]*)?>([\s\S]*?)<\/category>/gi;
+        let categoryMatch;
+        while ((categoryMatch = categoryRegex.exec(itemXml)) !== null) {
+          let category = categoryMatch[1];
+          if (category.includes('<![CDATA[')) {
+            const cdataMatch = category.match(/<!\[CDATA\[(.*?)\]\]>/s);
+            if (cdataMatch) category = cdataMatch[1];
+          }
+          category = category.replace(/<[^>]*>/g, '').trim();
+          if (category) {
+            categories.push(category);
+          }
+        }
+        
+        // Extract image
+        let image = '';
+        
+        // Try enclosure tag first
+        const enclosurePattern = /<enclosure\s+[^>]*url=["']([^"']+)["'][^>]*>/i;
+        const enclosureMatch = itemXml.match(enclosurePattern);
+        if (enclosureMatch && enclosureMatch[1]) {
+          image = enclosureMatch[1];
+        }
+        
+        // Try media:content
+        const mediaPattern = /<media:content\s+[^>]*url=["']([^"']+)["'][^>]*>/i;
+        const mediaMatch = itemXml.match(mediaPattern);
+        if (!image && mediaMatch && mediaMatch[1]) {
+          image = mediaMatch[1];
+        }
+        
+        // Fallback: extract from description
+        if (!image && description) {
+          const imgPattern = /<img\s+[^>]*src=["']([^"']+)["'][^>]*>/i;
+          const imgMatch = description.match(imgPattern);
+          if (imgMatch && imgMatch[1]) {
+            image = imgMatch[1];
+          }
+        }
+        
+        return { 
+          title, 
+          link, 
+          description: description.replace(/<[^>]*>/g, '').trim(), 
+          date, 
+          categories, 
+          image, 
+          external: true 
+        };
+      }).filter((p: any) => {
+        // Filter by category if filteredCat is provided
+        if (!filteredCat) return true;
+        return p.categories.some((cat: string) => 
+          cat.toLowerCase().includes(filteredCat.toLowerCase())
+        );
+      });
+    }
+
+    const combined = [
+      ...dbPosts.map((p: any) => ({ ...p, external: false })),
+      ...rssPosts
+    ];
+
+    combined.sort(
+      (a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    const total = combined.length;
+    const totalPages = Math.ceil(total / limit);
+    const start = (page - 1) * limit;
+    const end = start + limit;
+    const paginated = combined.slice(start, end);
+
+    return res.status(config.statusCode.SUCCESS).json({
+      success: true,
+      page,
+      limit,
+      total,
+      totalPages,
+      data: paginated,
+    });
   } catch (error) {
     next(error);
   }

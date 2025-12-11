@@ -48,32 +48,56 @@ export async function filterDestinations(
   res: Response,
   next: NextFunction
 ) {
-    try {
-        const location = req.body.location
-        const resort = req.body.resort
+  try {
+    const { location, resort, page = 1, limit = 10 } = req.body;
+    
+    // Convert to numbers for pagination
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10;
+    const skip = (pageNum - 1) * limitNum;
 
-        // Start with basic filter
-        const query: any = {};
+    // Start with basic filter
+    const query: any = {};
 
-        if (location) {
-          query.destination_location = location;
-        }
-
-        if (resort) {
-          query["resorts.resorts"] = {
-            $elemMatch: { title: resort } 
-          };
-        }
-
-        let destinations = await Destination.find(query);
-
-        return res
-            .status(config.statusCode.SUCCESS)
-            .json({ success: true, data: destinations });
+    if (location) {
+      query.destination_location = location;
     }
-    catch (error) {
-        next(error);
+
+    if (resort) {
+      query["resorts.resorts"] = {
+        $elemMatch: { title: resort } 
+      };
     }
+
+    // Get total count and paginated results in parallel
+    const [total, destinations] = await Promise.all([
+      Destination.countDocuments(query),
+      Destination.find(query)
+        .skip(skip)
+        .limit(limitNum)
+        // Add optional sorting (example: sort by name)
+        .sort({ name: 1 })
+    ]);
+
+    const totalPages = Math.ceil(total / limitNum);
+
+    return res
+      .status(config.statusCode.SUCCESS)
+      .json({ 
+        success: true, 
+        data: destinations,
+        pagination: {
+          currentPage: pageNum,
+          itemsPerPage: limitNum,
+          totalItems: total,
+          totalPages,
+          hasNextPage: pageNum < totalPages,
+          hasPrevPage: pageNum > 1
+        }
+      });
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function filterDestinationsAdventures(
@@ -905,11 +929,14 @@ export async function filterResortsByDestination(
   }
 }
 
-
 export async function filterDestinationsByTags(req: Request, res: Response, next: NextFunction) {
   try {
-
     const { location, resort } = req.body;
+    
+    // Extract pagination parameters from query string (not body)
+    const page = parseInt(req.body?.page as string) || 1;
+    const limit = parseInt(req.body?.limit as string) || 10;
+    const skip = (page - 1) * limit;
 
     const query: any = {};
 
@@ -925,25 +952,47 @@ export async function filterDestinationsByTags(req: Request, res: Response, next
       const selectedResort = await Resorts.findOne({ name: resort });
 
       if (!selectedResort) {
-        return res.status(200).json({ success: true, data: [] });
+        return res.status(200).json({ 
+          success: true, 
+          data: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            pages: 0
+          }
+        });
       }
 
       resortTags = selectedResort.tags || [];
-
-      // Now add tag matching condition
       query["resorts.resort_tags"] = { $in: resortTags };
     }
 
-    // Final MongoDB query
-    const destinations = await Destination.find(query);
+    // Get total count for pagination metadata
+    const total = await Destination.countDocuments(query);
+
+    // Final MongoDB query with pagination
+    const destinations = await Destination.find(query)
+      .skip(skip)
+      .limit(limit);
+
+    // Calculate total pages
+    const pages = Math.ceil(total / limit);
 
     return res.status(200).json({
       success: true,
-      data: destinations
+      data: destinations,
+      pagination: {
+        currentPage: page,
+        itemsPerPage: limit,
+        totalItems: total,
+        totalPages: pages,
+        hasNextPage: page < pages,
+        hasPrevPage: page > 1
+      }
     });
 
   } catch (error) {
     next(error);
   }
 }
-

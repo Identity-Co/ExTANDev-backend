@@ -6,7 +6,6 @@ const { Schema } = mongoose;
 
 const overviewSchemaBanners = new Schema(
   {
-    title: {type: String},
     content: {type: String},
     image: {type: String},
   },
@@ -69,7 +68,7 @@ const overviewSchema = new Schema(
 
 const roomsSchemaBanners = new Schema(
   {
-    title: {type: String},
+    content: {type: String},
     image: {type: String},
   },
   { _id: false }
@@ -104,7 +103,7 @@ const roomsSchema = new Schema(
 
 const servicesamenitiesSchemaBanners = new Schema(
   {
-    title: {type: String},
+    content: {type: String},
     image: {type: String},
   },
   { _id: false }
@@ -140,7 +139,7 @@ const servicesamenitiesSchema = new Schema(
 
 const offersSchemaBanners = new Schema(
   {
-    title: {type: String},
+    content: {type: String},
     image: {type: String},
   },
   { _id: false }
@@ -176,7 +175,7 @@ const offersSchema = new Schema(
 
 const storiesSchemaBanners = new Schema(
   {
-    title: {type: String},
+    content: {type: String},
     image: {type: String},
   },
   { _id: false }

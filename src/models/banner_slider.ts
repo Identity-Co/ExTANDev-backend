@@ -38,7 +38,7 @@ const BannerSchema = new Schema(
       type: String,
     }
   },
-  { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
+  { timestamps: { createdAt: "created_at", updatedAt: "updated_at" }, strict: false }
 );
 
 export default mongoose.model<IBanners>("BannerSliders", BannerSchema);
